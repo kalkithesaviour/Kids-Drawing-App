@@ -1,10 +1,16 @@
 package com.example.kidsdrawingapp
 
 import android.Manifest
+import android.app.Activity
 import android.app.Dialog
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
 import android.widget.ImageButton
 import android.widget.Toast
@@ -34,9 +40,37 @@ class MainActivity : AppCompatActivity() {
 
         ib_gallery.setOnClickListener {
             if(isReadStorageAllowed()) {
-                //run code to pick image from gallery
+                val pickPhotoIntent = Intent(Intent.ACTION_PICK,
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+                startActivityForResult(pickPhotoIntent, GALLERY)
             } else {
                 requestStoragePermission()
+            }
+        }
+
+        ib_undo.setOnClickListener {
+            drawing_view.onClickUndo()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if(resultCode == Activity.RESULT_OK) {
+            if(requestCode == GALLERY) {
+                try {
+                    if(data!!.data != null) {
+                        iv_background.visibility = View.VISIBLE
+                        iv_background.setImageURI(data.data)
+                    } else {
+                        Toast.makeText(
+                                this@MainActivity,
+                                "Error in parsing the image or it's corrupted.",
+                                Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }
@@ -107,7 +141,21 @@ class MainActivity : AppCompatActivity() {
         return result == PackageManager.PERMISSION_GRANTED
     }
 
+    private fun getBitmapFromView(view: View): Bitmap {
+        val returnedBitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(returnedBitmap)
+        val bgDrawable = view.background
+        if(bgDrawable != null) {
+            bgDrawable.draw(canvas)
+        } else {
+            canvas.drawColor(Color.WHITE)
+        }
+        view.draw(canvas)
+        return returnedBitmap
+    }
+
     companion object {
         private const val STORAGE_PERMISSION_CODE = 1
+        private const val GALLERY = 2
     }
 }
